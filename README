@@ -1,0 +1,11 @@
+PHP client library for using KnowledgeTree webservices.
+
+Example usage can be found in examples/client.php.
+
+The client library code is located in KTClient.inc.php.
+
+You will need to supply the following information when using the library:
+
+KnowledgeTree instance URL.
+KnowledgeTree user name.
+KnowledgeTree password.
