@@ -81,9 +81,7 @@ class KTClient {
 
     private function executeRequest($request, $parameters = array())
     {
-        if (!empty($this->sessionId)) {
-            array_unshift($parameters, $this->sessionId);
-        }
+        empty($this->sessionId) or array_unshift($parameters, $this->sessionId);
 
         $result = $this->client->__soapCall($request, $parameters);
         if ($this->requestSuccessful($result)) {
@@ -234,7 +232,7 @@ class KTClient {
             }
         }
 
-        throw new KTWebserviceException("An error occurred while attempting to upload the file");
+        throw new KTWebserviceException('An error occurred while attempting to upload the file');
     }
 
     private function setPostContent($localFilepath)
@@ -256,7 +254,7 @@ class KTClient {
         curl_setopt($ch, CURLOPT_HEADER, 0);
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible;)");
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/4.0 (compatible;)');
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
 
