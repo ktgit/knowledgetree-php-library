@@ -34,6 +34,7 @@ class KTClient {
     private $ip;
     private $sessionId;
     private $cacheWsdl = WSDL_CACHE_DISK;
+    private $trace = 0;
 
     /**
      * Construct a new KnowledgeTree client instance.
@@ -55,6 +56,10 @@ class KTClient {
      *
      *                 Available options are WSDL_CACHE_NONE, WSDL_CACHE_DISK, WSDL_CACHE_MEMORY or WSDL_CACHE_BOTH.
      *                 Default is WSDL_CACHE_DISK.
+     * 4. 'trace': Determines whether to make the last request and response (and respective headers) available.
+     *             Valid values are 0 and 1.
+     *             If set to 1, then the relevant data is exposed through getLastResponse, getLastResponseHeaders,
+     *             getLastRequest and getLastRequestHeaders.
      */
     public function __construct($server, Array $options = array())
     {
@@ -66,6 +71,7 @@ class KTClient {
 
         empty($options['application']) or $this->application = $options['application'];
         !isset($options['cacheWsdl']) or $this->cacheWsdl = $options['cacheWsdl'];
+        empty($options['trace']) or $this->trace = $options['trace'];
     }
 
     /**
@@ -83,17 +89,18 @@ class KTClient {
     {
         empty($this->sessionId) or array_unshift($parameters, $this->sessionId);
 
-        $result = $this->client->__soapCall($request, $parameters);
-        if ($this->requestSuccessful($result)) {
-            return $result;
+        $response = $this->client->__soapCall($request, $parameters);
+        if ($this->requestSuccessful($response)) {
+            return $response;
         }
 
-        throw new KTWebserviceException($result->message);
+        $message = empty($response->message) ? 'Received an empty response' : $response->message;
+        throw new KTWebserviceException($message);
     }
 
-    private function requestSuccessful($result)
+    private function requestSuccessful($response)
     {
-        return $result->status_code === 0;
+        return isset($response->status_code) && $response->status_code === 0;
     }
 
     // NOTE Recursive calls are made for elements of both array and object type.
@@ -125,8 +132,8 @@ class KTClient {
         }
 
         $parameters = array($username, $password, $this->ip, $this->application);
-        $result = $this->executeRequest('login', $parameters);
-        $this->sessionId = $result->message;
+        $response = $this->executeRequest('login', $parameters);
+        $this->sessionId = $response->message;
 
         return $this->sessionId;
     }
@@ -135,7 +142,11 @@ class KTClient {
     {
         try {
             $wsdl = $this->webserviceUrl . 'wsdl';
-            $this->client = new SoapClient($wsdl, array('cache_wsdl' => $this->cacheWsdl));
+            $options = array(
+                'cache_wsdl' => $this->cacheWsdl,
+                'trace' => $this->trace
+            );
+            $this->client = new SoapClient($wsdl, $options);
             return true;
         }
         catch (Exception $e) {
@@ -170,9 +181,9 @@ class KTClient {
         $folderId = is_int($folder) ? $folder : $this->locateFolderByPath($folder);
 
         $parameters = array($folderId, $name);
-        $result = $this->executeRequest('create_folder', $parameters);
+        $response = $this->executeRequest('create_folder', $parameters);
 
-        return $result->id;
+        return $response->id;
     }
 
     /**
@@ -205,9 +216,9 @@ class KTClient {
         $title or $title = $filename;
 
         $parameters = array($folderId, $title, $filename, $documentType, $uploadedTo);
-        $result = $this->executeRequest('add_document', $parameters);
+        $response = $this->executeRequest('add_document', $parameters);
 
-        return $result->document_id;
+        return $response->document_id;
     }
 
     private function uploadDocument($localFilepath)
@@ -331,9 +342,9 @@ class KTClient {
         $options = null;
 
         $parameters = array($searchQuery, $options);
-        $result = $this->executeRequest('search', $parameters);
+        $response = $this->executeRequest('search', $parameters);
 
-        return $this->convertToArray($result->hits);
+        return $this->convertToArray($response->hits);
     }
 
     /**
@@ -351,9 +362,9 @@ class KTClient {
     public function locateFolderByPath($folderPath)
     {
         $parameters = array($folderPath);
-        $result = $this->executeRequest('locate_folder_by_path', $parameters);
+        $response = $this->executeRequest('locate_folder_by_path', $parameters);
 
-        return $result->folder_id;
+        return $response->folder_id;
     }
 
     /**
@@ -379,9 +390,9 @@ class KTClient {
         $folderId = is_int($baseFolder) ? $baseFolder : $this->locateFolderByPath($baseFolder);
 
         $parameters = array($folderId, $depth, $type);
-        $result = $this->executeRequest('get_folder_contents', $parameters);
+        $response = $this->executeRequest('get_folder_contents', $parameters);
 
-        return $this->convertToArray($result->items);
+        return $this->convertToArray($response->items);
     }
 
     /**
@@ -441,7 +452,7 @@ class KTClient {
         $parameters = array($documentId, $version);
         $this->executeRequest('download_document', $parameters);
 
-        $downloadRedirect = "Location: {$result->message}";
+        $downloadRedirect = "Location: {$response->message}";
         header($downloadRedirect);
         exit(0);
     }
@@ -496,10 +507,10 @@ class KTClient {
     public function getDocumentMetadata($documentId)
     {
         $parameters = array($documentId);
-        $result = $this->executeRequest('get_document_metadata', $parameters);
+        $response = $this->executeRequest('get_document_metadata', $parameters);
 
         $metadata = array();
-        foreach ($result->metadata as $fieldset) {
+        foreach ($response->metadata as $fieldset) {
             $metadata[$fieldset->fieldset] = $this->formatMetadataResultFields($fieldset->fields);
         }
 
@@ -600,7 +611,7 @@ class KTClient {
     public function setDocumentMetadata($documentId, $metadata)
     {
         $parameters = array($documentId, $this->formatMetadataInput($metadata));
-        $result = $this->executeRequest('simple_metadata_update', $parameters);
+        $response = $this->executeRequest('simple_metadata_update', $parameters);
     }
 
     private function formatMetadataInput($metadata)
@@ -678,9 +689,29 @@ class KTClient {
     public function getComments($documentId, $order = 'DESC')
     {
         $parameters = array($documentId);
-        $result = $this->executeRequest('get_document_comments', $parameters);
+        $response = $this->executeRequest('get_document_comments', $parameters);
 
-        return $this->convertToArray($result->comments);
+        return $this->convertToArray($response->comments);
+    }
+
+    /**
+     * @param array $user_info Associative array containing
+     *      'email' => user email,
+     *      'login' => user login name if not using email as login name,
+     *      'name' => user name,
+     *      'notifications' => email notifications on/off (optional), defaults to off if not supplied,
+     *      'password' => user password,
+     *      'mobile' => mobile phone number (optional),
+     *      'max_sessions' => maximum number of simultaneous sessions (optional), defaults to 3 if not supplied.
+     *
+     * @return int The id of the created user on success.
+     */
+    public function addUser($userInfo)
+    {
+        $parameters = array($userInfo);
+        $response = $this->executeRequest('add_user', $parameters);
+
+        return $response->user_id;
     }
 
     /**
@@ -691,6 +722,34 @@ class KTClient {
     public function getSessionId()
     {
         return $this->sessionId;
+    }
+
+    public function getLastResponseHeaders()
+    {
+        if ($this->trace) {
+            return $this->client->__getLastResponseHeaders();
+        }
+    }
+
+    public function getLastResponse()
+    {
+        if ($this->trace) {
+            return $this->client->__getLastResponse();
+        }
+    }
+
+    public function getLastRequestHeaders()
+    {
+        if ($this->trace) {
+            return $this->client->__getLastRequestHeaders();
+        }
+    }
+
+    public function getLastRequest()
+    {
+        if ($this->trace) {
+            return $this->client->__getLastRequest();
+        }
     }
 
 }
