@@ -704,6 +704,8 @@ class KTClient {
      *      'mobile' => mobile phone number (optional),
      *      'max_sessions' => maximum number of simultaneous sessions (optional), defaults to 3 if not supplied.
      *
+     * NOTE If the system expects to be using email addresses as login names, then the 'login' value will be ignored.
+     * 
      * @return int The id of the created user on success.
      */
     public function addUser($userInfo)
