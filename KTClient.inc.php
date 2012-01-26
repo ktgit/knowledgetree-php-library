@@ -94,7 +94,7 @@ class KTClient {
             return $response;
         }
 
-        $message = empty($response->message) ? 'Received an empty response' : $response->message;
+        $message = empty($response) ? 'Received an empty response' : $response->message;
         throw new KTWebserviceException($message);
     }
 
@@ -695,18 +695,66 @@ class KTClient {
     }
 
     /**
+     * Get user information from a user id.
+     *
+     * @param int $userId
+     *
+     * @return array $user_info Associative array containing
+     *      'user_id' => user id,
+     *      'email' => user email,
+     *      'username' => user login name,
+     *      'name' => user name,
+     *      'notifications' => email notifications on/off,
+     *      'mobile' => mobile phone number,
+     *      'max_sessions' => maximum number of simultaneous sessions.
+     */
+    public function getUserById($userId)
+    {
+        $response = $this->executeRequest('get_user_by_id', array($userId));
+        return $this->formatUserInfoResponse($response);
+    }
+
+    /**
+     * Get user information from a username.
+     *
+     * @param string $username
+     *
+     * @return array $user_info Associative array containing
+     *      'user_id' => user id,
+     *      'email' => user email,
+     *      'username' => user login name,
+     *      'name' => user name,
+     *      'notifications' => email notifications on/off,
+     *      'mobile' => mobile phone number,
+     *      'max_sessions' => maximum number of simultaneous sessions.
+     */
+    public function getUserByUsername($username)
+    {
+        $response = $this->executeRequest('get_user_by_username', array($username));
+        return $this->formatUserInfoResponse($response);
+    }
+
+    private function formatUserInfoResponse($response)
+    {
+        $userInfo = $this->convertToArray($response->user_info);
+        $userInfo['user_id'] = $response->user_id;
+
+        return $userInfo;
+    }
+
+    /**
      * Add a user to the KnowledgeTree system.
      *
      * @param array $user_info Associative array containing
      *      'email' => user email,
-     *      'login' => user login name if not using email as login name,
+     *      'username' => user login name if not using email as login name,
      *      'name' => user name,
      *      'notifications' => email notifications on/off (optional), defaults to off if not supplied,
      *      'password' => user password,
      *      'mobile' => mobile phone number (optional),
      *      'max_sessions' => maximum number of simultaneous sessions (optional), defaults to 3 if not supplied.
      *
-     * NOTE If the system expects to be using email addresses as login names, then the 'login' value will be ignored.
+     * NOTE If the system expects to be using email addresses as login names, then the 'username' value will be ignored.
      *
      * @return int The id of the created user on success.
      */
@@ -722,14 +770,14 @@ class KTClient {
      * @param int $userId
      * @param array $user_info Associative array containing
      *      'email' => user email,
-     *      'login' => user login name if not using email as login name,
+     *      'username' => user login name if not using email as login name,
      *      'name' => user name,
      *      'notifications' => email notifications on/off (optional), defaults to off if not supplied,
      *      'password' => user password,
      *      'mobile' => mobile phone number (optional),
      *      'max_sessions' => maximum number of simultaneous sessions (optional), defaults to 3 if not supplied.
      *
-     * NOTE If the system expects to be using email addresses as login names, then the 'login' value will be ignored.
+     * NOTE If the system expects to be using email addresses as login names, then the 'username' value will be ignored.
      *
      * @return int The id of the created user on success.
      */
