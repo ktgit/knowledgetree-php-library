@@ -695,6 +695,8 @@ class KTClient {
     }
 
     /**
+     * Add a user to the KnowledgeTree system.
+     *
      * @param array $user_info Associative array containing
      *      'email' => user email,
      *      'login' => user login name if not using email as login name,
@@ -705,14 +707,35 @@ class KTClient {
      *      'max_sessions' => maximum number of simultaneous sessions (optional), defaults to 3 if not supplied.
      *
      * NOTE If the system expects to be using email addresses as login names, then the 'login' value will be ignored.
-     * 
+     *
      * @return int The id of the created user on success.
      */
     public function addUser($userInfo)
     {
-        $parameters = array($userInfo);
-        $response = $this->executeRequest('add_user', $parameters);
+        $response = $this->executeRequest('add_user', array($userInfo));
+        return $response->user_id;
+    }
 
+    /**
+     * Update an existing user within the KnowledgeTree system.
+     *
+     * @param int $userId
+     * @param array $user_info Associative array containing
+     *      'email' => user email,
+     *      'login' => user login name if not using email as login name,
+     *      'name' => user name,
+     *      'notifications' => email notifications on/off (optional), defaults to off if not supplied,
+     *      'password' => user password,
+     *      'mobile' => mobile phone number (optional),
+     *      'max_sessions' => maximum number of simultaneous sessions (optional), defaults to 3 if not supplied.
+     *
+     * NOTE If the system expects to be using email addresses as login names, then the 'login' value will be ignored.
+     *
+     * @return int The id of the created user on success.
+     */
+    public function updateUser($userId, $userInfo)
+    {
+        $response = $this->executeRequest('update_user', array($userId, $userInfo));
         return $response->user_id;
     }
 
