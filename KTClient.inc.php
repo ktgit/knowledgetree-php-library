@@ -788,6 +788,19 @@ class KTClient {
     }
 
     /**
+     * Delete a user.
+     *
+     * @param int $userId
+     *
+     * @return int The id of the user who was deleted.
+     */
+    public function deleteUser($userId)
+    {
+        $response = $this->executeRequest('delete_user', array($userId));
+        return $response->user_id;
+    }
+
+    /**
      * Get the id of the current session.
      * You can then reuse this session id across scripts by calling reuseSession,
      * instead of initiating a new session each time.
