@@ -801,6 +801,20 @@ class KTClient {
     }
 
     /**
+     * Add a user to an existing group.
+     *
+     * @param int $userId
+     * @param int $groupId
+     *
+     * @return int The id of the group to which the user was added.
+     */
+    public function addUserToGroup($userId, $groupId)
+    {
+        $response = $this->executeRequest('add_user_to_group', array($userId, $groupId));
+        return $response->group_id;
+    }
+
+    /**
      * Get the id of the current session.
      * You can then reuse this session id across scripts by calling reuseSession,
      * instead of initiating a new session each time.
