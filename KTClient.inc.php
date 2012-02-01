@@ -815,6 +815,20 @@ class KTClient {
     }
 
     /**
+     * Remove a user from a group.
+     *
+     * @param int $userId
+     * @param int $groupId
+     *
+     * @return int The id of the group from which the user was removed.
+     */
+    public function removeUserFromGroup($userId, $groupId)
+    {
+        $response = $this->executeRequest('remove_user_from_group', array($userId, $groupId));
+        return $response->group_id;
+    }
+
+    /**
      * Get the id of the current session.
      * You can then reuse this session id across scripts by calling reuseSession,
      * instead of initiating a new session each time.
