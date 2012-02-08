@@ -107,6 +107,10 @@ class KTClient {
     //      This is to ensure that any objects hidden within sub-arrays are converted.
     private function convertToArray($input)
     {
+        if (!is_array($input) && !is_object($input)) {
+            return empty($input) ? array() : array($input);
+        }
+
         $output = array();
 
         foreach ($input as $key => $value) {
@@ -826,6 +830,70 @@ class KTClient {
     {
         $response = $this->executeRequest('remove_user_from_group', array($userId, $groupId));
         return $response->group_id;
+    }
+
+    /**
+     * Returns an array list of groups.
+     *
+     * @param array $options Associative array containing
+     *      'filter' => A string filter to be matched by a SQL LIKE query (e.g. LIKE '%<filter>%')
+     *                  (will match on the name field),
+     *      'orderby' => A field by which to order (must be a legitimate field, e.g. 'name', 'id')
+     *                   Can also specify a direction, e.g. 'name desc',
+     *      'limit' => The maximum number of results to be returned,
+     *      'offset' => The offset from which to start returning results when using a limit.
+     *
+     * Example query resulting from the use of these options:
+     *      SELECT <fields> FROM groups [WHERE name LIKE '%<filter>%'] [ORDER BY <orderby>] [LIMIT <offset>, <limit>]
+     *
+     * All $options parameters are optional.  If you want all groups, you needn't submit any parameters.
+     *
+     * Order by name is used as default in the KnowledgeTree API,
+     * so if you want name ordering you do not need to specify.
+     *
+     * @return array A list of groups matching the [optional] specified filter,
+     *               ordered/limited according to the specified options.
+     */
+    public function listGroups($options = array())
+    {
+        $filter = empty($options['filter']) ? null : $options['filter'];
+        unset($options['filter']);
+
+        $response = $this->executeRequest('get_groups', array($filter, $options));
+
+        return $this->convertToArray($response->groups);
+    }
+
+    /**
+     * Returns an array list of roles.
+     *
+     * @param array $options Associative array containing
+     *      'filter' => A string filter to be matched by a SQL LIKE query (e.g. LIKE '%<filter>%')
+     *                  (will match on the name field),
+     *      'orderby' => A field by which to order (must be a legitimate field, e.g. 'name', 'id')
+     *                   Can also specify a direction, e.g. 'name desc',
+     *      'limit' => The maximum number of results to be returned,
+     *      'offset' => The offset from which to start returning results when using a limit.
+     *
+     * Example query resulting from the use of these options:
+     *      SELECT <fields> FROM roles [WHERE name LIKE '%<filter>%'] [ORDER BY <orderby>] [LIMIT <offset>, <limit>]
+     *
+     * All $options parameters are optional.  If you want all roles, you needn't submit any parameters.
+     *
+     * Order by name is used as default in the KnowledgeTree API,
+     * so if you want name ordering you do not need to specify.
+     *
+     * @return array A list of groups matching the [optional] specified filter,
+     *               ordered/limited according to the specified options.
+     */
+    public function listRoles($options = array())
+    {
+        $filter = empty($options['filter']) ? null : $options['filter'];
+        unset($options['filter']);
+
+        $response = $this->executeRequest('get_roles', array($filter, $options));
+
+        return $this->convertToArray($response->roles);
     }
 
     /**
