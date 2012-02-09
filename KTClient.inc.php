@@ -17,6 +17,9 @@
  *  Set document metadata.
  *  Add a comment to a document.
  *  Get all comments for a document.
+ *  Get the permissions set on a folder.
+ *  Set the permissions for a folder.
+ *  Update the folder permissions to inherit from the parent folder.
  *
  *  On errors with any request an exception will be thrown.
  */
@@ -894,6 +897,108 @@ class KTClient {
         $response = $this->executeRequest('get_roles', array($filter, $options));
 
         return $this->convertToArray($response->roles);
+    }
+
+    /**
+     * Get the list of permissions allocated to a folder and determine if the folder defines its own permissions
+     * or inherits them from a parent folder.
+     *
+     * @param int $folderId
+     *
+     * @return array The allocated permissions. If the folder inherits its permissions, the parent folder is indicated.
+     *              The available permissions are:
+     *                      'read' => 'Read'
+     *                      'write' => 'Write'
+     *                      'addFolder' => 'Add Folder'
+     *                      'security' => 'Manage Security'
+     *                      'delete' => 'Delete'
+     *                      'workflow' => 'Manage workflow'
+     *                      'folder_rename' => 'Rename Folder'
+     *                      'folder_details' => 'Folder Details'
+     *
+     *              If the folder inherits its permissions from a parent folder, then the parent folder id and path
+     *              will be returned.
+     */
+    public function getFolderPermissions($folderId)
+    {
+        $response = $this->executeRequest('get_folder_permissions', array($folderId));
+        $permissions = $this->convertToArray($response);
+        
+        return $permissions;
+    }
+
+    /**
+     * Update the folder permissions to the given permissions.
+     * If the folder inherits its permissions, then these are overriden and the new permissions applied
+     *
+     * Note: A permissions update takes a long time to apply, therefore it is run asynchronously and the function will return
+     * before it is completed.
+     *
+     * @param int $folderId
+     * @param array $permissions
+     *
+     * The following format is required for the permissions allocated:
+     * Array (
+     *       'groups' => Array (
+     *           Array (
+     *               'id' => 1,
+     *               'allocated_permissions' => Array
+     *                   (
+     *                       'read' => 'Read',
+     *                       'security' => 'Manage security',
+     *                       'folder_details' => 'Folder Details'
+     *                   )
+     *           ),
+     *           Array (
+     *               'id' => 5,
+     *               'allocated_permissions' => Array (
+     *                       'read' => 'Read',
+     *                       'write' => 'Write',
+     *                       'addFolder' => true,
+     *                       'workflow' => 'Manage workflow',
+     *                       'folder_rename' => true,
+     *                       'folder_details' => 'Folder Details'
+     *                   )
+     *           )
+     *       ),
+     *       'roles' => Array (
+     *           Array (
+     *               'id' => 4,
+     *               'allocated_permissions' => Array (
+     *                       'read' => 'Read',
+     *                       'folder_details' => 'Folder Details'
+     *                   )
+     *           )
+     *       )
+     *   );
+     *
+     *
+     * @return string Message indicating whether the permissions update has been started.
+     */
+    public function setFolderPermissions($folderId, $permissions)
+    {
+        $response = $this->executeRequest('set_folder_permissions', array($folderId, $permissions));
+        
+        return $response->message;
+    }
+    
+    /**
+     * Modify the folder to inherit its permissions from the parent folder.
+     * If the parent folder inherits its permissions, then the permissions will be inherited from the next folder up the
+     * tree which defines its own permissions
+     * 
+     * Note: A permissions update takes a long time to apply, therefore it is run asynchronously and the function will return
+     * before it is completed.
+     *
+     * @param int $folderId
+     *
+     * @return string Message indicating whether the permissions update has been started.
+     */
+    public function inheritParentFolderPermissions($folderId)
+    {
+        $response = $this->executeRequest('inherit_parent_folder_permissions', array($folderId));
+        
+        return $response->message;
     }
 
     /**
