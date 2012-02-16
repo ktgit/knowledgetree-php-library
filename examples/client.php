@@ -83,6 +83,52 @@ try {
     $comments = $client->getComments(18);
     echo '<pre>' . print_r($comments, true) . '</pre>';
 
+    // Get the permissions on a folder - first get the folder id
+    $folderId = $client->locateFolderByPath('/examplefolder/subfolder');
+
+    $permissions = $client->getFolderPermissions($folderId);
+    echo '<pre>' . print_r($permissions, true) . '</pre>';
+    
+    // If the folder permissions are inherited then override them and set new permissions
+    if ($permissions['isInherited']) {
+        
+        // Create the permissions array
+        // The listGroups function can be used to get the correct groups
+        $group1['id'] = 1; // The "System Administrators" group
+        $group1['allocated_permissions'] = Array(
+                            'read' => 'true',
+                            'security' => 'true',
+                            'folder_details' => 'true'
+                        );
+        $group2['id'] = 5; // Another group in the system
+        $group2['allocated_permissions'] = Array (
+                            'read' => 'true',
+                            'write' => 'true',
+                            'workflow' => 'true',
+                            'folder_details' => 'true'
+                        );
+        
+        // The listRoles function can be used to get the correct roles
+        $role1['id'] = -4; // The "Everyone" role in the system
+        $role1['allocated_permissions'] = Array (
+                            'read' => 'true',
+                            'folder_details' => 'true'
+                        );
+        
+        $newPermissions['groups'][] = $group1;
+        $newPermissions['groups'][] = $group2;
+        $newPermissions['roles'][] = $role1;
+        
+        // Update the permissions
+        $message = $client->setFolderPermissions($folderId, $newPermissions);
+        print "Permissions Update response: $message<br/>";
+    }
+    else {
+        // If the folder defines its own permissions, then we update it to inherit from the parent folder
+        $message = $client->inheritParentFolderPermissions($folderId);
+        print "Permissions Inherit response: $message<br/>";
+    }
+
     $client->closeSession();
 }
 catch (Exception $e) {

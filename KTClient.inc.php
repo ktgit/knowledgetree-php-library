@@ -17,6 +17,9 @@
  *  Set document metadata.
  *  Add a comment to a document.
  *  Get all comments for a document.
+ *  Get the permissions set on a folder.
+ *  Set the permissions for a folder.
+ *  Update the folder permissions to inherit from the parent folder.
  *
  *  On errors with any request an exception will be thrown.
  */
@@ -34,6 +37,7 @@ class KTClient {
     private $ip;
     private $sessionId;
     private $cacheWsdl = WSDL_CACHE_DISK;
+    private $trace = 0;
 
     /**
      * Construct a new KnowledgeTree client instance.
@@ -55,6 +59,10 @@ class KTClient {
      *
      *                 Available options are WSDL_CACHE_NONE, WSDL_CACHE_DISK, WSDL_CACHE_MEMORY or WSDL_CACHE_BOTH.
      *                 Default is WSDL_CACHE_DISK.
+     * 4. 'trace': Determines whether to make the last request and response (and respective headers) available.
+     *             Valid values are 0 and 1.
+     *             If set to 1, then the relevant data is exposed through getLastResponse, getLastResponseHeaders,
+     *             getLastRequest and getLastRequestHeaders.
      */
     public function __construct($server, Array $options = array())
     {
@@ -66,6 +74,7 @@ class KTClient {
 
         empty($options['application']) or $this->application = $options['application'];
         !isset($options['cacheWsdl']) or $this->cacheWsdl = $options['cacheWsdl'];
+        empty($options['trace']) or $this->trace = $options['trace'];
     }
 
     /**
@@ -83,23 +92,28 @@ class KTClient {
     {
         empty($this->sessionId) or array_unshift($parameters, $this->sessionId);
 
-        $result = $this->client->__soapCall($request, $parameters);
-        if ($this->requestSuccessful($result)) {
-            return $result;
+        $response = $this->client->__soapCall($request, $parameters);
+        if ($this->requestSuccessful($response)) {
+            return $response;
         }
 
-        throw new KTWebserviceException($result->message);
+        $message = empty($response) ? 'Received an empty response' : $response->message;
+        throw new KTWebserviceException($message);
     }
 
-    private function requestSuccessful($result)
+    private function requestSuccessful($response)
     {
-        return $result->status_code === 0;
+        return isset($response->status_code) && $response->status_code === 0;
     }
 
     // NOTE Recursive calls are made for elements of both array and object type.
     //      This is to ensure that any objects hidden within sub-arrays are converted.
     private function convertToArray($input)
     {
+        if (!is_array($input) && !is_object($input)) {
+            return empty($input) ? array() : array($input);
+        }
+
         $output = array();
 
         foreach ($input as $key => $value) {
@@ -125,8 +139,8 @@ class KTClient {
         }
 
         $parameters = array($username, $password, $this->ip, $this->application);
-        $result = $this->executeRequest('login', $parameters);
-        $this->sessionId = $result->message;
+        $response = $this->executeRequest('login', $parameters);
+        $this->sessionId = $response->message;
 
         return $this->sessionId;
     }
@@ -135,7 +149,13 @@ class KTClient {
     {
         try {
             $wsdl = $this->webserviceUrl . 'wsdl';
-            $this->client = new SoapClient($wsdl, array('cache_wsdl' => $this->cacheWsdl));
+            $options = array(
+                'cache_wsdl' => $this->cacheWsdl,
+                'trace' => $this->trace
+            );
+
+            $this->client = new SoapClient($wsdl, $options);
+
             return true;
         }
         catch (Exception $e) {
@@ -170,9 +190,9 @@ class KTClient {
         $folderId = is_int($folder) ? $folder : $this->locateFolderByPath($folder);
 
         $parameters = array($folderId, $name);
-        $result = $this->executeRequest('create_folder', $parameters);
+        $response = $this->executeRequest('create_folder', $parameters);
 
-        return $result->id;
+        return $response->id;
     }
 
     /**
@@ -205,9 +225,9 @@ class KTClient {
         $title or $title = $filename;
 
         $parameters = array($folderId, $title, $filename, $documentType, $uploadedTo);
-        $result = $this->executeRequest('add_document', $parameters);
+        $response = $this->executeRequest('add_document', $parameters);
 
-        return $result->document_id;
+        return $response->document_id;
     }
 
     private function uploadDocument($localFilepath)
@@ -227,8 +247,7 @@ class KTClient {
         if ($response && strpos($info['http_code'], '2') === 0) {
             $response = json_decode($response, true);
             if ($response['status_code'] === 0 && $response['upload_status']['upload']['error'] === 0) {
-                $uploadedTo = $response['upload_status']['upload']['tmp_name'];
-                return $uploadedTo;
+                return $response['upload_status']['upload']['tmp_name'];
             }
         }
 
@@ -291,8 +310,7 @@ class KTClient {
      */
     public function search($searchTerms)
     {
-        $searchQuery = "(GeneralText contains \"$searchTerms\")";
-        return $this->advancedSearch($searchQuery);
+        return $this->advancedSearch("(GeneralText contains \"$searchTerms\")");
     }
 
     /**
@@ -331,9 +349,9 @@ class KTClient {
         $options = null;
 
         $parameters = array($searchQuery, $options);
-        $result = $this->executeRequest('search', $parameters);
+        $response = $this->executeRequest('search', $parameters);
 
-        return $this->convertToArray($result->hits);
+        return $this->convertToArray($response->hits);
     }
 
     /**
@@ -351,9 +369,9 @@ class KTClient {
     public function locateFolderByPath($folderPath)
     {
         $parameters = array($folderPath);
-        $result = $this->executeRequest('locate_folder_by_path', $parameters);
+        $response = $this->executeRequest('locate_folder_by_path', $parameters);
 
-        return $result->folder_id;
+        return $response->folder_id;
     }
 
     /**
@@ -379,9 +397,9 @@ class KTClient {
         $folderId = is_int($baseFolder) ? $baseFolder : $this->locateFolderByPath($baseFolder);
 
         $parameters = array($folderId, $depth, $type);
-        $result = $this->executeRequest('get_folder_contents', $parameters);
+        $response = $this->executeRequest('get_folder_contents', $parameters);
 
-        return $this->convertToArray($result->items);
+        return $this->convertToArray($response->items);
     }
 
     /**
@@ -441,7 +459,7 @@ class KTClient {
         $parameters = array($documentId, $version);
         $this->executeRequest('download_document', $parameters);
 
-        $downloadRedirect = "Location: {$result->message}";
+        $downloadRedirect = "Location: {$response->message}";
         header($downloadRedirect);
         exit(0);
     }
@@ -496,10 +514,10 @@ class KTClient {
     public function getDocumentMetadata($documentId)
     {
         $parameters = array($documentId);
-        $result = $this->executeRequest('get_document_metadata', $parameters);
+        $response = $this->executeRequest('get_document_metadata', $parameters);
 
         $metadata = array();
-        foreach ($result->metadata as $fieldset) {
+        foreach ($response->metadata as $fieldset) {
             $metadata[$fieldset->fieldset] = $this->formatMetadataResultFields($fieldset->fields);
         }
 
@@ -600,7 +618,7 @@ class KTClient {
     public function setDocumentMetadata($documentId, $metadata)
     {
         $parameters = array($documentId, $this->formatMetadataInput($metadata));
-        $result = $this->executeRequest('simple_metadata_update', $parameters);
+        $response = $this->executeRequest('simple_metadata_update', $parameters);
     }
 
     private function formatMetadataInput($metadata)
@@ -678,9 +696,328 @@ class KTClient {
     public function getComments($documentId, $order = 'DESC')
     {
         $parameters = array($documentId);
-        $result = $this->executeRequest('get_document_comments', $parameters);
+        $response = $this->executeRequest('get_document_comments', $parameters);
 
-        return $this->convertToArray($result->comments);
+        return $this->convertToArray($response->comments);
+    }
+
+    /**
+     * Get user information from a user id.
+     *
+     * @param int $userId
+     *
+     * @return array $user_info Associative array containing
+     *      'user_id' => user id,
+     *      'email' => user email,
+     *      'username' => user login name,
+     *      'name' => user name,
+     *      'notifications' => email notifications on/off,
+     *      'mobile' => mobile phone number,
+     *      'max_sessions' => maximum number of simultaneous sessions.
+     */
+    public function getUserById($userId)
+    {
+        $response = $this->executeRequest('get_user_by_id', array($userId));
+
+        return $this->formatUserInfoResponse($response);
+    }
+
+    /**
+     * Get user information from a username.
+     *
+     * @param string $username
+     *
+     * @return array $user_info Associative array containing
+     *      'user_id' => user id,
+     *      'email' => user email,
+     *      'username' => user login name,
+     *      'name' => user name,
+     *      'notifications' => email notifications on/off,
+     *      'mobile' => mobile phone number,
+     *      'max_sessions' => maximum number of simultaneous sessions.
+     */
+    public function getUserByUsername($username)
+    {
+        $response = $this->executeRequest('get_user_by_username', array($username));
+
+        return $this->formatUserInfoResponse($response);
+    }
+
+    private function formatUserInfoResponse($response)
+    {
+        $userInfo = $this->convertToArray($response->user_info);
+        $userInfo['user_id'] = $response->user_id;
+
+        return $userInfo;
+    }
+
+    /**
+     * Add a user to the KnowledgeTree system.
+     *
+     * @param array $user_info Associative array containing
+     *      'email' => user email,
+     *      'username' => user login name if not using email as login name,
+     *      'name' => user name,
+     *      'notifications' => email notifications on/off (optional), defaults to off if not supplied,
+     *      'password' => user password,
+     *      'mobile' => mobile phone number (optional),
+     *      'max_sessions' => maximum number of simultaneous sessions (optional), defaults to 3 if not supplied.
+     *
+     * NOTE If the system expects to be using email addresses as login names, then the 'username' value will be ignored.
+     *
+     * @return int The id of the created user on success.
+     */
+    public function addUser($userInfo)
+    {
+        $response = $this->executeRequest('add_user', array($userInfo));
+
+        return $response->user_id;
+    }
+
+    /**
+     * Update an existing user within the KnowledgeTree system.
+     *
+     * @param int $userId
+     * @param array $user_info Associative array containing
+     *      'email' => user email,
+     *      'username' => user login name if not using email as login name,
+     *      'name' => user name,
+     *      'notifications' => email notifications on/off (optional), defaults to off if not supplied,
+     *      'password' => user password,
+     *      'mobile' => mobile phone number (optional),
+     *      'max_sessions' => maximum number of simultaneous sessions (optional), defaults to 3 if not supplied.
+     *
+     * NOTE If the system expects to be using email addresses as login names, then the 'username' value will be ignored.
+     *
+     * @return int The id of the created user on success.
+     */
+    public function updateUser($userId, $userInfo)
+    {
+        $response = $this->executeRequest('update_user', array($userId, $userInfo));
+
+        return $response->user_id;
+    }
+
+    /**
+     * Delete a user.
+     *
+     * @param int $userId
+     *
+     * @return int The id of the user who was deleted.
+     */
+    public function deleteUser($userId)
+    {
+        $response = $this->executeRequest('delete_user', array($userId));
+
+        return $response->user_id;
+    }
+
+    /**
+     * Add a user to an existing group.
+     *
+     * @param int $userId
+     * @param int $groupId
+     *
+     * @return int The id of the group to which the user was added.
+     */
+    public function addUserToGroup($userId, $groupId)
+    {
+        $response = $this->executeRequest('add_user_to_group', array($userId, $groupId));
+
+        return $response->group_id;
+    }
+
+    /**
+     * Remove a user from a group.
+     *
+     * @param int $userId
+     * @param int $groupId
+     *
+     * @return int The id of the group from which the user was removed.
+     */
+    public function removeUserFromGroup($userId, $groupId)
+    {
+        $response = $this->executeRequest('remove_user_from_group', array($userId, $groupId));
+
+        return $response->group_id;
+    }
+
+    /**
+     * Returns an array list of groups.
+     *
+     * @param array $options Associative array containing
+     *      'filter' => A string filter to be matched by a SQL LIKE query (e.g. LIKE '%<filter>%')
+     *                  (will match on the name field),
+     *      'orderby' => A field by which to order (must be a legitimate field, e.g. 'name', 'id')
+     *                   Can also specify a direction, e.g. 'name desc',
+     *      'limit' => The maximum number of results to be returned,
+     *      'offset' => The offset from which to start returning results when using a limit.
+     *
+     * Example query resulting from the use of these options:
+     *      SELECT <fields> FROM groups [WHERE name LIKE '%<filter>%'] [ORDER BY <orderby>] [LIMIT <offset>, <limit>]
+     *
+     * All $options parameters are optional.  If you want all groups, you needn't submit any parameters.
+     *
+     * Order by name is used as default in the KnowledgeTree API,
+     * so if you want name ordering you do not need to specify.
+     *
+     * @return array A list of groups matching the [optional] specified filter,
+     *               ordered/limited according to the specified options.
+     */
+    public function listGroups($options = array())
+    {
+        $filter = empty($options['filter']) ? null : $options['filter'];
+        unset($options['filter']);
+
+        $response = $this->executeRequest('get_groups', array($filter, $options));
+
+        return $this->convertToArray($response->groups);
+    }
+
+    /**
+     * Returns an array list of roles.
+     *
+     * @param array $options Associative array containing
+     *      'filter' => A string filter to be matched by a SQL LIKE query (e.g. LIKE '%<filter>%')
+     *                  (will match on the name field),
+     *      'orderby' => A field by which to order (must be a legitimate field, e.g. 'name', 'id')
+     *                   Can also specify a direction, e.g. 'name desc',
+     *      'limit' => The maximum number of results to be returned,
+     *      'offset' => The offset from which to start returning results when using a limit.
+     *
+     * Example query resulting from the use of these options:
+     *      SELECT <fields> FROM roles [WHERE name LIKE '%<filter>%'] [ORDER BY <orderby>] [LIMIT <offset>, <limit>]
+     *
+     * All $options parameters are optional.  If you want all roles, you needn't submit any parameters.
+     *
+     * Order by name is used as default in the KnowledgeTree API,
+     * so if you want name ordering you do not need to specify.
+     *
+     * @return array A list of groups matching the [optional] specified filter,
+     *               ordered/limited according to the specified options.
+     */
+    public function listRoles($options = array())
+    {
+        $filter = empty($options['filter']) ? null : $options['filter'];
+        unset($options['filter']);
+
+        $response = $this->executeRequest('get_roles', array($filter, $options));
+
+        return $this->convertToArray($response->roles);
+    }
+
+    /**
+     * Get the list of permissions allocated to a folder and determine if the folder defines its own permissions
+     * or inherits them from a parent folder.
+     *
+     * @param int $folderId
+     *
+     * @return array The allocated permissions. If the folder inherits its permissions, the parent folder is indicated.
+     *              The available permissions are:
+     *                      'read' = 'Read'
+     *                      'write' = 'Write'
+     *                      'addFolder' = 'Add Folder'
+     *                      'security' = 'Manage Security'
+     *                      'delete' = 'Delete'
+     *                      'workflow' = 'Manage workflow'
+     *                      'folder_rename' = 'Rename Folder'
+     *                      'folder_details' = 'Folder Details'
+     *
+     *              If the folder inherits its permissions from a parent folder, then the parent folder id and path
+     *              will be returned.
+     *
+     * NOTE Due to the structure of the response, we first unset the values we don't care about,
+     *      (status_code and message,) and then convert the remainder to an array.
+     */
+    public function getFolderPermissions($folderId)
+    {
+        $response = $this->executeRequest('get_folder_permissions', array($folderId));
+
+        unset($response->status_code);
+        unset($response->message);
+
+        return $this->convertToArray($response);
+    }
+
+    /**
+     * Update the folder permissions to the given permissions.
+     * If the folder inherits its permissions, then these are overriden and the new permissions applied
+     *
+     * Note: A permissions update takes a long time to apply, therefore it is run asynchronously and
+     *       the function will return before it is completed.
+     *
+     * @param int $folderId
+     * @param array $permissions
+     *
+     * The following format is required for the permissions allocated:
+     *      - if the permission is absent from the list it will be false
+     *      - only the string 'true' will be accepted as true
+     * Array (
+     *       'groups' => Array (
+     *           Array (
+     *               'id' => 1,
+     *               'allocated_permissions' => Array
+     *                   (
+     *                       read' => 'true',
+     *                       'write' => 'true',
+     *                       'addFolder' => 'false',
+     *                       'security' => 'true',
+     *                       'delete' => 'true',
+     *                       'workflow' => 'false',
+     *                       'folder_rename' => 'false',
+     *                       'folder_details' => 'true'
+     *                   )
+     *           ),
+     *           Array (
+     *               'id' => 5,
+     *               'allocated_permissions' => Array (
+     *                       'read' => 'true',
+     *                       'write' => 'true',
+     *                       'addFolder' => true,
+     *                       'workflow' => 'true',
+     *                       'folder_rename' => 'true',
+     *                       'folder_details' => 'true'
+     *                   )
+     *           )
+     *       ),
+     *       'roles' => Array (
+     *           Array (
+     *               'id' => 4,
+     *               'allocated_permissions' => Array (
+     *                       'read' => 'true',
+     *                       'folder_details' => 'true'
+     *                   )
+     *           )
+     *       )
+     *   );
+     *
+     *
+     * @return string Message indicating whether the permissions update has been started.
+     */
+    public function setFolderPermissions($folderId, $permissions)
+    {
+        $response = $this->executeRequest('set_folder_permissions', array($folderId, $permissions));
+
+        return $response->message;
+    }
+
+    /**
+     * Modify the folder to inherit its permissions from the parent folder.
+     * If the parent folder inherits its permissions, then the permissions will be inherited from the next folder up the
+     * tree which defines its own permissions
+     *
+     * Note: A permissions update takes a long time to apply, therefore it is run asynchronously and the function will return
+     * before it is completed.
+     *
+     * @param int $folderId
+     *
+     * @return string Message indicating whether the permissions update has been started.
+     */
+    public function inheritParentFolderPermissions($folderId)
+    {
+        $response = $this->executeRequest('inherit_parent_folder_permissions', array($folderId));
+
+        return $response->message;
     }
 
     /**
@@ -691,6 +1028,34 @@ class KTClient {
     public function getSessionId()
     {
         return $this->sessionId;
+    }
+
+    public function getLastResponseHeaders()
+    {
+        if ($this->trace) {
+            return $this->client->__getLastResponseHeaders();
+        }
+    }
+
+    public function getLastResponse()
+    {
+        if ($this->trace) {
+            return $this->client->__getLastResponse();
+        }
+    }
+
+    public function getLastRequestHeaders()
+    {
+        if ($this->trace) {
+            return $this->client->__getLastRequestHeaders();
+        }
+    }
+
+    public function getLastRequest()
+    {
+        if ($this->trace) {
+            return $this->client->__getLastRequest();
+        }
     }
 
 }
