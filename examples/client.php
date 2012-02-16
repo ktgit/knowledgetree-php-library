@@ -96,23 +96,23 @@ try {
         // The listGroups function can be used to get the correct groups
         $group1['id'] = 1; // The "System Administrators" group
         $group1['allocated_permissions'] = Array(
-                            'read' => 'Read',
-                            'security' => 'Manage security',
-                            'folder_details' => 'Folder Details'
+                            'read' => 'true',
+                            'security' => 'true',
+                            'folder_details' => 'true'
                         );
         $group2['id'] = 5; // Another group in the system
         $group2['allocated_permissions'] = Array (
-                            'read' => 'Read',
-                            'write' => 'Write',
-                            'workflow' => 'Manage workflow',
-                            'folder_details' => 'Folder Details'
+                            'read' => 'true',
+                            'write' => 'true',
+                            'workflow' => 'true',
+                            'folder_details' => 'true'
                         );
         
         // The listRoles function can be used to get the correct roles
         $role1['id'] = -4; // The "Everyone" role in the system
         $role1['allocated_permissions'] = Array (
-                            'read' => 'Read',
-                            'folder_details' => 'Folder Details'
+                            'read' => 'true',
+                            'folder_details' => 'true'
                         );
         
         $newPermissions['groups'][] = $group1;

@@ -907,14 +907,14 @@ class KTClient {
      *
      * @return array The allocated permissions. If the folder inherits its permissions, the parent folder is indicated.
      *              The available permissions are:
-     *                      'read' => 'Read'
-     *                      'write' => 'Write'
-     *                      'addFolder' => 'Add Folder'
-     *                      'security' => 'Manage Security'
-     *                      'delete' => 'Delete'
-     *                      'workflow' => 'Manage workflow'
-     *                      'folder_rename' => 'Rename Folder'
-     *                      'folder_details' => 'Folder Details'
+     *                      'read' = 'Read'
+     *                      'write' = 'Write'
+     *                      'addFolder' = 'Add Folder'
+     *                      'security' = 'Manage Security'
+     *                      'delete' = 'Delete'
+     *                      'workflow' = 'Manage workflow'
+     *                      'folder_rename' = 'Rename Folder'
+     *                      'folder_details' = 'Folder Details'
      *
      *              If the folder inherits its permissions from a parent folder, then the parent folder id and path
      *              will be returned.
@@ -938,26 +938,33 @@ class KTClient {
      * @param array $permissions
      *
      * The following format is required for the permissions allocated:
+     *      - if the permission is absent from the list it will be false
+     *      - only the string 'true' will be accepted as true
      * Array (
      *       'groups' => Array (
      *           Array (
      *               'id' => 1,
      *               'allocated_permissions' => Array
      *                   (
-     *                       'read' => 'Read',
-     *                       'security' => 'Manage security',
-     *                       'folder_details' => 'Folder Details'
+     *                       read' => 'true',
+     *                       'write' => 'true',
+     *                       'addFolder' => 'false',
+     *                       'security' => 'true',
+     *                       'delete' => 'true',
+     *                       'workflow' => 'false',
+     *                       'folder_rename' => 'false',
+     *                       'folder_details' => 'true'
      *                   )
      *           ),
      *           Array (
      *               'id' => 5,
      *               'allocated_permissions' => Array (
-     *                       'read' => 'Read',
-     *                       'write' => 'Write',
+     *                       'read' => 'true',
+     *                       'write' => 'true',
      *                       'addFolder' => true,
-     *                       'workflow' => 'Manage workflow',
-     *                       'folder_rename' => true,
-     *                       'folder_details' => 'Folder Details'
+     *                       'workflow' => 'true',
+     *                       'folder_rename' => 'true',
+     *                       'folder_details' => 'true'
      *                   )
      *           )
      *       ),
@@ -965,8 +972,8 @@ class KTClient {
      *           Array (
      *               'id' => 4,
      *               'allocated_permissions' => Array (
-     *                       'read' => 'Read',
-     *                       'folder_details' => 'Folder Details'
+     *                       'read' => 'true',
+     *                       'folder_details' => 'true'
      *                   )
      *           )
      *       )
