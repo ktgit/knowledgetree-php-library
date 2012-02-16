@@ -153,7 +153,9 @@ class KTClient {
                 'cache_wsdl' => $this->cacheWsdl,
                 'trace' => $this->trace
             );
+
             $this->client = new SoapClient($wsdl, $options);
+
             return true;
         }
         catch (Exception $e) {
@@ -245,8 +247,7 @@ class KTClient {
         if ($response && strpos($info['http_code'], '2') === 0) {
             $response = json_decode($response, true);
             if ($response['status_code'] === 0 && $response['upload_status']['upload']['error'] === 0) {
-                $uploadedTo = $response['upload_status']['upload']['tmp_name'];
-                return $uploadedTo;
+                return $response['upload_status']['upload']['tmp_name'];
             }
         }
 
@@ -309,8 +310,7 @@ class KTClient {
      */
     public function search($searchTerms)
     {
-        $searchQuery = "(GeneralText contains \"$searchTerms\")";
-        return $this->advancedSearch($searchQuery);
+        return $this->advancedSearch("(GeneralText contains \"$searchTerms\")");
     }
 
     /**
@@ -718,6 +718,7 @@ class KTClient {
     public function getUserById($userId)
     {
         $response = $this->executeRequest('get_user_by_id', array($userId));
+
         return $this->formatUserInfoResponse($response);
     }
 
@@ -738,6 +739,7 @@ class KTClient {
     public function getUserByUsername($username)
     {
         $response = $this->executeRequest('get_user_by_username', array($username));
+
         return $this->formatUserInfoResponse($response);
     }
 
@@ -768,6 +770,7 @@ class KTClient {
     public function addUser($userInfo)
     {
         $response = $this->executeRequest('add_user', array($userInfo));
+
         return $response->user_id;
     }
 
@@ -791,6 +794,7 @@ class KTClient {
     public function updateUser($userId, $userInfo)
     {
         $response = $this->executeRequest('update_user', array($userId, $userInfo));
+
         return $response->user_id;
     }
 
@@ -804,6 +808,7 @@ class KTClient {
     public function deleteUser($userId)
     {
         $response = $this->executeRequest('delete_user', array($userId));
+
         return $response->user_id;
     }
 
@@ -818,6 +823,7 @@ class KTClient {
     public function addUserToGroup($userId, $groupId)
     {
         $response = $this->executeRequest('add_user_to_group', array($userId, $groupId));
+
         return $response->group_id;
     }
 
@@ -832,6 +838,7 @@ class KTClient {
     public function removeUserFromGroup($userId, $groupId)
     {
         $response = $this->executeRequest('remove_user_from_group', array($userId, $groupId));
+
         return $response->group_id;
     }
 
@@ -918,21 +925,26 @@ class KTClient {
      *
      *              If the folder inherits its permissions from a parent folder, then the parent folder id and path
      *              will be returned.
+     *
+     * NOTE Due to the structure of the response, we first unset the values we don't care about,
+     *      (status_code and message,) and then convert the remainder to an array.
      */
     public function getFolderPermissions($folderId)
     {
         $response = $this->executeRequest('get_folder_permissions', array($folderId));
-        $permissions = $this->convertToArray($response);
-        
-        return $permissions;
+
+        unset($response->status_code);
+        unset($response->message);
+
+        return $this->convertToArray($response);
     }
 
     /**
      * Update the folder permissions to the given permissions.
      * If the folder inherits its permissions, then these are overriden and the new permissions applied
      *
-     * Note: A permissions update takes a long time to apply, therefore it is run asynchronously and the function will return
-     * before it is completed.
+     * Note: A permissions update takes a long time to apply, therefore it is run asynchronously and
+     *       the function will return before it is completed.
      *
      * @param int $folderId
      * @param array $permissions
@@ -985,15 +997,15 @@ class KTClient {
     public function setFolderPermissions($folderId, $permissions)
     {
         $response = $this->executeRequest('set_folder_permissions', array($folderId, $permissions));
-        
+
         return $response->message;
     }
-    
+
     /**
      * Modify the folder to inherit its permissions from the parent folder.
      * If the parent folder inherits its permissions, then the permissions will be inherited from the next folder up the
      * tree which defines its own permissions
-     * 
+     *
      * Note: A permissions update takes a long time to apply, therefore it is run asynchronously and the function will return
      * before it is completed.
      *
@@ -1004,7 +1016,7 @@ class KTClient {
     public function inheritParentFolderPermissions($folderId)
     {
         $response = $this->executeRequest('inherit_parent_folder_permissions', array($folderId));
-        
+
         return $response->message;
     }
 
