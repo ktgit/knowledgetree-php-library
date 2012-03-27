@@ -793,6 +793,11 @@ class KTClient {
      */
     public function updateUser($userId, $userInfo)
     {
+        // Ensure all fields are correctly set
+        $currentUser = $this->getUserById($userId);
+        unset($currentUser['user_id']);
+        $userInfo = array_merge($currentUser, $userInfo);
+
         $response = $this->executeRequest('update_user', array($userId, $userInfo));
 
         return $response->user_id;
