@@ -457,7 +457,7 @@ class KTClient {
     public function downloadDocument($documentId, $version = null)
     {
         $parameters = array($documentId, $version);
-        $this->executeRequest('download_document', $parameters);
+        $response = $this->executeRequest('download_document', $parameters);
 
         $downloadRedirect = "Location: {$response->message}";
         header($downloadRedirect);
