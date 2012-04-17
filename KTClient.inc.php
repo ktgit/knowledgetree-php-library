@@ -848,6 +848,38 @@ class KTClient {
     }
 
     /**
+     * Returns an array list of users.
+     *
+     * @param array $options Associative array containing
+     *      'filter' => A string filter to be matched by a SQL LIKE query (e.g. LIKE '%<filter>%')
+     *                  (will match on the name field),
+     *      'orderby' => A field by which to order (must be a legitimate field, e.g. 'name', 'id')
+     *                   Can also specify a direction, e.g. 'name desc',
+     *      'limit' => The maximum number of results to be returned,
+     *      'offset' => The offset from which to start returning results when using a limit.
+     *
+     * Example query resulting from the use of these options:
+     *      SELECT <fields> FROM users [WHERE name LIKE '%<filter>%'] [ORDER BY <orderby>] [LIMIT <offset>, <limit>]
+     *
+     * All $options parameters are optional.  If you want all users, you needn't submit any parameters.
+     *
+     * Order by name is used as default in the KnowledgeTree API,
+     * so if you want name ordering you do not need to specify.
+     *
+     * @return array A list of users matching the [optional] specified filter,
+     *               ordered/limited according to the specified options.
+     */
+    public function listUsers($options = array())
+    {
+        $filter = empty($options['filter']) ? null : $options['filter'];
+        unset($options['filter']);
+
+        $response = $this->executeRequest('get_users', array($filter, $options));
+
+        return $this->convertToArray($response->users);
+    }
+
+    /**
      * Returns an array list of groups.
      *
      * @param array $options Associative array containing
