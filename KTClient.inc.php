@@ -789,11 +789,11 @@ class KTClient {
      *
      * NOTE If the system expects to be using email addresses as login names, then the 'username' value will be ignored.
      *
-     * @return int The id of the created user on success.
+     * @return int The id of the updated user on success.
      */
     public function updateUser($userId, $userInfo)
     {
-        // Ensure all fields are correctly set
+        // Ensure all fields are correctly set.
         $currentUser = $this->getUserById($userId);
         unset($currentUser['user_id']);
         $userInfo = array_merge($currentUser, $userInfo);
