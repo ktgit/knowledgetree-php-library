@@ -7,9 +7,12 @@
  *
  *  Add a document to the repository.
  *  Remove (delete) a document from the repository.
- *  Search for documents by name, id, or content (NOTE Check that content search is enabled via webservices.)
+ *  Search for documents by name, id, or content
+ *  (NOTE Check that content search is enabled via webservices.)
  *  Locate a folder by the folder path (returns the folder ID.)
  *  Browse the folder tree (from a relative parent folder.)
+ *  Fetch a flat listing of all content (as distinct from the nested
+ *  structure produced by the [not yet implemented] browse method.)
  *  Check out a document (with optional download.)
  *  Check in a document (requires upload of a new version.)
  *  Download a document.
@@ -48,6 +51,7 @@ class KTClient {
      * Optional inputs can be:
      *
      * 1. 'ip': IP address from which you are using the client.  If not supplied this is set to a random string.
+     *          Note that any unique string is acceptable, it does not have to be an IP address.
      * 2. 'application': Application name to differentiate different KnowledgeTree client applications
      *                   which may wish to access the KnowledgeTree instance at the same time.
      *                   This associates the session with the particular app.
@@ -124,7 +128,7 @@ class KTClient {
     }
 
     /**
-     * Create a new KnowledgeTree client session and sets the session id to be used for subsequent requests.
+     * Creates a new KnowledgeTree client session and sets the session id to be used for subsequent requests.
      * Auto-connects if there is no existing connection.
      *
      * @param string $username The KnowledgeTree username for this session.
@@ -400,6 +404,62 @@ class KTClient {
         $response = $this->executeRequest('get_folder_contents', $parameters);
 
         return $this->convertToArray($response->items);
+    }
+
+    /**
+     * Requests the entire content of the repository in a flat array.
+     *
+     * Return array structure:
+     * [
+     *   folders => [
+     *     [
+     *       folder_id => folder id,
+     *       parent_id => parent folder id,
+     *       name => (file) name, (not title?)
+     *       description => description,
+     *       creator => creator,
+     *       created => date created,
+     *       modifyinguser => last user to make modifications,
+     *       modified => date last modified,
+     *       fullpath => full directory path,
+     *       owner => current owner,
+     *       type => 'folder'
+     *     ],
+     *     ...
+     *   ],
+     *   documents => [
+     *     [
+     *       document_id => document id,
+     *       parent_id => parent folder id,
+     *       name => (file) name, (not title?)
+     *       description => description,
+     *       creator => creator,
+     *       created => date created,
+     *       modifyinguser => last user to make modifications,
+     *       modified => date last modified,
+     *       fullpath => full directory path,
+     *       owner => current owner,
+     *       type => 'document'
+     *     ],
+     *     ...
+     *   ]
+     * ]
+     *
+     * Items are ordered by id ascending.
+     *
+     * NOTE Since the something removes the string indexes,
+     *      folders are items[0], documents are items[1]
+     *
+     * @return Array containing two sub-arrays, folders and documents.
+     */
+    public function getFlatContentList()
+    {
+        $response = $this->executeRequest('get_flat_content_list');
+
+        return array(
+            'folders' => $this->convertToArray($response->items[0]),
+            'documents' => $this->convertToArray($response->items[1]),
+        );
     }
 
     /**
