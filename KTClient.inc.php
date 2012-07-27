@@ -94,7 +94,7 @@ class KTClient {
 
     private function executeRequest($request, $parameters = array())
     {
-        empty($this->sessionId) or array_unshift($parameters, $this->sessionId);
+        $request == 'login' or array_unshift($parameters, $this->sessionId);
 
         $response = $this->client->__soapCall($request, $parameters);
         if ($this->requestSuccessful($response)) {
