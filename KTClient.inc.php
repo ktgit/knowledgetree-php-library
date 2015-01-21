@@ -933,6 +933,7 @@ class KTClient {
     {
         $filter = empty($options['filter']) ? null : $options['filter'];
         unset($options['filter']);
+        $options = $this->validateSqlOptions($options);
 
         $response = $this->executeRequest('get_users', array($filter, $options));
 
@@ -965,6 +966,7 @@ class KTClient {
     {
         $filter = empty($options['filter']) ? null : $options['filter'];
         unset($options['filter']);
+        $options = $this->validateSqlOptions($options);
 
         $response = $this->executeRequest('get_groups', array($filter, $options));
 
@@ -997,10 +999,29 @@ class KTClient {
     {
         $filter = empty($options['filter']) ? null : $options['filter'];
         unset($options['filter']);
+        $options = $this->validateSqlOptions($options);
 
         $response = $this->executeRequest('get_roles', array($filter, $options));
 
         return $this->convertToArray($response->roles);
+    }
+
+    /**
+     * Validates the options passed into one of the list functions. The webservice expects all 3 to be present:
+     *      'orderby' => A field by which to order (must be a legitimate field, e.g. 'name', 'id')
+     *                   Can also specify a direction, e.g. 'name desc',
+     *      'limit' => The maximum number of results to be returned,
+     *      'offset' => The offset from which to start returning results when using a limit.
+     *
+     * @param array $options
+     */
+    private function validateSqlOptions($options)
+    {
+        isset($options['orderby']) or $options['orderby'] = 'id';
+        isset($options['limit']) or $options['limit'] = '1000';
+        isset($options['offset']) or $options['offset'] = '0';
+
+        return $options;
     }
 
     /**
@@ -1047,12 +1068,13 @@ class KTClient {
      * @param array $permissions
      *
      * The following format is required for the permissions allocated:
-     *      - if the permission is absent from the list it will be false
+     *      - all permissions must be present in the list
      *      - only the string 'true' will be accepted as true
      * Array (
      *       'groups' => Array (
      *           Array (
      *               'id' => 1,
+     *               'name' => '',
      *               'allocated_permissions' => Array
      *                   (
      *                       read' => 'true',
@@ -1067,10 +1089,13 @@ class KTClient {
      *           ),
      *           Array (
      *               'id' => 5,
+     *               'name' => '',
      *               'allocated_permissions' => Array (
      *                       'read' => 'true',
      *                       'write' => 'true',
      *                       'addFolder' => true,
+     *                       'security' => 'false',
+     *                       'delete' => 'false',
      *                       'workflow' => 'true',
      *                       'folder_rename' => 'true',
      *                       'folder_details' => 'true'
@@ -1080,8 +1105,15 @@ class KTClient {
      *       'roles' => Array (
      *           Array (
      *               'id' => 4,
+     *               'name' => '',
      *               'allocated_permissions' => Array (
      *                       'read' => 'true',
+     *                       'write' => 'false',
+     *                       'addFolder' => false,
+     *                       'security' => 'false',
+     *                       'delete' => 'false',
+     *                       'workflow' => 'false',
+     *                       'folder_rename' => 'false',
      *                       'folder_details' => 'true'
      *                   )
      *           )
