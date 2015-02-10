@@ -285,6 +285,42 @@ class KTClient {
     }
 
     /**
+     * Fetch the document details based on the document title and parent folder id
+     *
+     * @param string $title The document title (NOTE: not the filename)
+     * @param int $folder The id of the parent folder containing the document
+     * @return array Document details
+     */
+    public function getDocumentByTitle($title, $folder = 1)
+    {
+        $parameters = array($folder, $title, 'T');
+        $response = $this->executeRequest('get_document_detail_by_title', $parameters);
+
+        unset($response->status_code);
+        unset($response->message);
+
+        return $this->convertToArray($response);
+    }
+
+    /**
+     * Fetch the document details based on the document filename and parent folder id
+     *
+     * @param string $filename The filename of the document
+     * @param int $folder The id of the parent folder containing the document
+     * @return array Document details
+     */
+    public function getDocumentByFilename($filename, $folder = 1)
+    {
+        $parameters = array($folder, $filename, '');
+        $response = $this->executeRequest('get_document_detail_by_filename', $parameters);
+
+        unset($response->status_code);
+        unset($response->message);
+
+        return $this->convertToArray($response);
+    }
+
+    /**
      * Remove a document from the KnowledgeTree repository.
      *
      * NOTE While this marks the document as deleted, it is not expunged and can be
