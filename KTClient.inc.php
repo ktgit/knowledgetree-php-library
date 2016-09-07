@@ -264,10 +264,21 @@ class KTClient {
         $post['session_id'] = $this->sessionId;
         $post['apptype'] = $this->application;
         $post['action'] = 'A';
-        $post['upload'] = "@$localFilepath";
+        $post['upload'] = $this->attachFile($localFilepath);
         $post['submit'] = 'submit';
 
         return $post;
+    }
+
+    private function attachFile($filePath)
+    {
+        // PHP 5.5 and higher uses the new CURLFile class
+        if (function_exists('curl_file_create')) {
+            return curl_file_create($filePath);
+        }
+        else {
+            return "@$filePath";
+        }
     }
 
     private function initCurlHandle($post)
