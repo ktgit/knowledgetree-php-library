@@ -332,6 +332,25 @@ class KTClient {
     }
 
     /**
+     * Fetch the document details based on the document id
+     *
+     * @param int $documentId The id of the document
+     * @param string $detail Specifies which details to return, an empty string returns the basic document details, a combination of MTVH returns additional data.
+     *                       M = Metadata / properties, T = Workflow Transitions, V = Version History, H = Transaction History
+     * @return array Document details
+     */
+    public function getDocumentDetail($documentId, $detail = '')
+    {
+        $parameters = array($documentId, $detail);
+        $response = $this->executeRequest('get_document_detail', $parameters);
+
+        unset($response->status_code);
+        unset($response->message);
+
+        return $this->convertToArray($response);
+    }
+
+    /**
      * Remove a document from the KnowledgeTree repository.
      *
      * NOTE While this marks the document as deleted, it is not expunged and can be
@@ -770,6 +789,14 @@ class KTClient {
             if ($selected == $option) {
                 return true;
             }
+        }
+
+        // In the case of a multi-select field, the selected value will correspond to multiple options.
+        $selectedArr = explode(',', $selected);
+        $invalidOptions = array_diff($selectedArr, $options);
+
+        if (empty($invalidOptions)) {
+            return true;
         }
 
         throw new KTWebserviceException("'$selected' is not a valid option for '$field'");
