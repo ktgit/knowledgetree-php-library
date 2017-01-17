@@ -296,6 +296,34 @@ class KTClient {
     }
 
     /**
+     * Add a website URL or remote document URL to the KnowledgeTree repository.
+     * NB! Only available on version 4 of the webservice! Default version is 3.
+     *
+     * @param string $link The full URL pointing to the website or remote document.
+     * @param string $title The title with which the document will be saved.
+     * @param int | string $folder [Optional] The folder into which to add the new folder.
+     *                                        This can be an id or a folder path.
+     *                                        If not set, defaults to the root folder.
+     *                                        If you use the folder path option and specify a path which does not
+     *                                        exist, an error will be raised.
+     * @param string $documentType The type of document.  This must match a document type registered with the
+     *                             KnowledgeTree instance, else the default type will be used.
+     * @param string $remoteDocType Available Options: website | remote. Indicator of whether the link points to a website or remote document.
+     *
+     * @return int The id of the added document.
+     */
+    public function addRemoteDocument($link, $title, $folder = 1, $documentType = 'Default', $remoteDocType = 'website')
+    {
+        $folderId = is_int($folder) ? $folder : $this->locateFolderByPath($folder);
+        $title or $title = $link;
+
+        $parameters = array($folderId, $title, $link, $documentType, $remoteDocType);
+        $response = $this->executeRequest('add_remote_document', $parameters);
+
+        return $response->document_id;
+    }
+
+    /**
      * Fetch the document details based on the document title and parent folder id
      *
      * @param string $title The document title (NOTE: not the filename)
@@ -343,6 +371,24 @@ class KTClient {
     {
         $parameters = array($documentId, $detail);
         $response = $this->executeRequest('get_document_detail', $parameters);
+
+        unset($response->status_code);
+        unset($response->message);
+
+        return $this->convertToArray($response);
+    }
+
+    /**
+     * Rename the title of the document.
+     *
+     * @param int $documentId The id of the document
+     * @param string $newTitle The new title of the document
+     * @return array Document details
+     */
+    public function renameDocumentTitle($documentId, $newTitle)
+    {
+        $parameters = array($documentId, $newTitle);
+        $response = $this->executeRequest('rename_document_title', $parameters);
 
         unset($response->status_code);
         unset($response->message);
