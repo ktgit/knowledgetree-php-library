@@ -35,7 +35,7 @@ class KTClient {
 
     private $uploadUrl;
     private $webserviceUrl;
-    private $apiVersion = 3;
+    private $apiVersion = 4;
     private $application = 'KTPHPClient';
     private $ip;
     private $sessionId;
@@ -71,7 +71,7 @@ class KTClient {
     public function __construct($server, Array $options = array())
     {
         $server = trim($server, '/');
-        $this->webserviceUrl = "{$server}/ktwebservice/webservice.php?";
+        $this->webserviceUrl = "{$server}/ktwebservice/v{$this->apiVersion}";
         $this->uploadUrl = "{$server}/ktwebservice/upload.php";
 
         $this->ip = empty($options['ip']) ? sha1(mt_rand()) : $options['ip'];
@@ -152,7 +152,7 @@ class KTClient {
     private function connect()
     {
         try {
-            $wsdl = $this->webserviceUrl . 'wsdl';
+            $wsdl = $this->webserviceUrl . '/wsdl';
             $options = array(
                 'cache_wsdl' => $this->cacheWsdl,
                 'trace' => $this->trace
@@ -364,7 +364,7 @@ class KTClient {
      *
      * @param int $documentId The id of the document
      * @param string $detail Specifies which details to return, an empty string returns the basic document details, a combination of MTVH returns additional data.
-     *                       M = Metadata / properties, T = Workflow Transitions, V = Version History, H = Transaction History
+     *                       M = Metadata / properties, T = Workflow Transitions, V = Version History, H = Transaction History, F = Fusion Asset Details (share link)
      * @return array Document details
      */
     public function getDocumentDetail($documentId, $detail = '')
@@ -1267,6 +1267,20 @@ class KTClient {
         $response = $this->executeRequest('inherit_parent_folder_permissions', array($folderId));
 
         return $response->message;
+    }
+
+    /**
+     * Fetch the share link for a document which has been imported as an asset into KnowledgeTree Fusion.
+     * Note, this function is only available to customers with both LaunchPad and Fusion accounts.
+     *
+     *  @param int $documentId The id of the document in LaunchPad.
+     *  @return string The share link
+     */
+    public function getFusionShareLink($documentId)
+    {
+        $response = $this->executeRequest('get_document_fusion_share_link', array($documentId));
+
+        return $response->results;
     }
 
     /**
