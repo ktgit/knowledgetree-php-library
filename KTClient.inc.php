@@ -20,9 +20,11 @@
  *  Set document metadata.
  *  Add a comment to a document.
  *  Get all comments for a document.
+ *  Fetch the list of document types.
  *  Get the permissions set on a folder.
  *  Set the permissions for a folder.
  *  Update the folder permissions to inherit from the parent folder.
+ *  Fetch the Fusion share link (Fusion customers only)
  *
  *  On errors with any request an exception will be thrown.
  */
@@ -457,14 +459,14 @@ class KTClient {
      * Parentheses are required.  Multiple sets of criteria can be grouped by parentheses.
      *
      * @param string $searchQuery The search query to be executed.
+     * @param string $optionsFlag Optional parameter indicating what must be included in the results.
+     *                              FOLDERS | FUSION_LINK | ALL (Both folders and the fusion share link)
      *
      * @return array A listing of results found.
      */
-    public function advancedSearch($searchQuery)
+    public function advancedSearch($searchQuery, $optionsFlag = null)
     {
-        $options = null;
-
-        $parameters = array($searchQuery, $options);
+        $parameters = array($searchQuery, (string)$optionsFlag);
         $response = $this->executeRequest('search', $parameters);
 
         return $this->convertToArray($response->hits);
@@ -879,6 +881,17 @@ class KTClient {
         $response = $this->executeRequest('get_document_comments', $parameters);
 
         return $this->convertToArray($response->comments);
+    }
+
+    /**
+     * Fetch the list of document types in the system.
+     *
+     * @return array A listing of document types.
+     */
+    public function getDocumentTypes()
+    {
+        $response = $this->executeRequest('get_document_types');
+        return $this->convertToArray($response->document_types);
     }
 
     /**
