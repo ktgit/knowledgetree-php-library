@@ -29,6 +29,13 @@
  *  On errors with any request an exception will be thrown.
  */
 
+/**
+ * The socket timeout should be set if long running calls are being made to the service.
+ * For example, a search query may take a long time to return. In these situations, the connection may be closed before the
+ *      results are received. Extend the timeout in order to prevent the connection timing out. (Error = Error fetching http headers)
+ */
+//ini_set("default_socket_timeout", 600);
+
 class KTWebserviceException extends Exception {}
 
 class KTClient {
