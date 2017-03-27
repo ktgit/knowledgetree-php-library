@@ -644,6 +644,14 @@ class KTClient {
         header($downloadRedirect);
         exit(0);
     }
+    
+    public function getDownloadURL($documentId, $version = null)
+    {
+        $parameters = array($documentId, $version);
+        $response = $this->executeRequest('download_document', $parameters);
+
+        return $response->message;
+    }
 
     /**
      * Check in a checked out document.
