@@ -50,6 +50,7 @@ class KTClient {
     private $sessionId;
     private $cacheWsdl = WSDL_CACHE_DISK;
     private $trace = 0;
+    private $sslVerifyPeer = true;
 
     /**
      * Construct a new KnowledgeTree client instance.
@@ -88,6 +89,7 @@ class KTClient {
         empty($options['application']) or $this->application = $options['application'];
         !isset($options['cacheWsdl']) or $this->cacheWsdl = $options['cacheWsdl'];
         empty($options['trace']) or $this->trace = $options['trace'];
+        !isset($options['sslVerifyPeer']) or $this->sslVerifyPeer = (bool)$options['sslVerifyPeer'];
     }
 
     /**
@@ -166,6 +168,16 @@ class KTClient {
                 'cache_wsdl' => $this->cacheWsdl,
                 'trace' => $this->trace
             );
+
+            if (!$this->sslVerifyPeer) {
+    			$options['stream_context'] = stream_context_create([
+                    'ssl' => [
+                        'verify_peer' => false,
+                        'verify_peer_name' => false,
+                        'allow_self_signed' => true,
+                    ]
+                ]);
+            }
 
             $this->client = new SoapClient($wsdl, $options);
 
@@ -254,6 +266,7 @@ class KTClient {
 
         $response = curl_exec($ch);
         $info = curl_getinfo($ch);
+        $error = curl_error($ch);
 
         curl_close($ch);
 
@@ -264,7 +277,7 @@ class KTClient {
             }
         }
 
-        throw new KTWebserviceException('An error occurred while attempting to upload the file');
+        throw new KTWebserviceException('An error occurred while attempting to upload the file: ' . $error);
     }
 
     private function setPostContent($localFilepath)
@@ -300,6 +313,7 @@ class KTClient {
         curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/4.0 (compatible;)');
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+        $this->sslVerifyPeer or curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
         return $ch;
     }
@@ -644,7 +658,7 @@ class KTClient {
         header($downloadRedirect);
         exit(0);
     }
-    
+
     public function getDownloadURL($documentId, $version = null)
     {
         $parameters = array($documentId, $version);
